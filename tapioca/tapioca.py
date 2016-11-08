@@ -80,7 +80,7 @@ class TapiocaClient(object):
         url_params = self._api_params.get('default_url_params', {})
         url_params.update(kwargs)
         if self._resource and url_params:
-            data = self._api.fill_resource_template_url(self._data, url_params)
+            data = self._api.fill_resource_template_url(template=self._data, params=url_params)
 
         return self._wrap_in_tapioca_executor(data, resource=self._resource,
                                               response=self._response)
@@ -103,7 +103,7 @@ class TapiocaClient(object):
         resource_mapping = self._api.resource_mapping
         if name in resource_mapping:
             resource = resource_mapping[name]
-            api_root = self._api.get_api_root(self._api_params)
+            api_root = self._api.get_api_root(api_params=self._api_params)
 
             url = api_root.rstrip('/') + '/' + resource['resource'].lstrip('/')
             return self._wrap_in_tapioca(url, resource=resource)
@@ -186,7 +186,7 @@ class TapiocaClientExecutor(TapiocaClient):
 
     def __getattr__(self, name):
         if name.startswith('to_'):  # deserializing
-            return self._api._get_to_native_method(name, self._data)
+            return self._api._get_to_native_method(method_name=name, value=self._data)
         return self._wrap_in_tapioca_executor(getattr(self._data, name))
 
     def __call__(self, *args, **kwargs):
@@ -216,7 +216,7 @@ class TapiocaClientExecutor(TapiocaClient):
         response = requests.request(request_method, **request_kwargs)
 
         try:
-            data = self._api.process_response(response)
+            data = self._api.process_response(response=response)
         except ResponseProcessException as e:
             client = self._wrap_in_tapioca(e.data, response=response,
                                            request_kwargs=request_kwargs)
@@ -224,8 +224,9 @@ class TapiocaClientExecutor(TapiocaClient):
 
             should_refresh_token = (refresh_token is not False and
                                     self._refresh_token_default)
-            if should_refresh_token and self._api.is_authentication_expired(tapioca_exception):
-                self._api.refresh_authentication(self._api_params)
+            if should_refresh_token and self._api.is_authentication_expired(
+                    exception=tapioca_exception):
+                self._api.refresh_authentication(api_params=self._api_params)
                 return self._make_request(request_method, *args, **kwargs)
             else:
                 raise tapioca_exception
@@ -249,11 +250,16 @@ class TapiocaClientExecutor(TapiocaClient):
         return self._make_request('DELETE', *args, **kwargs)
 
     def _get_iterator_list(self):
-        return self._api.get_iterator_list(self._data)
+        return self._api.get_iterator_list(
+            api_params=self._api_params, resource=self._resource,
+            iterator_request_kwargs=self._request_kwargs,
+            response_data=self._data, response=self._response)
 
     def _get_iterator_next_request_kwargs(self):
         return self._api.get_iterator_next_request_kwargs(
-            self._request_kwargs, self._data, self._response)
+            api_params=self._api_params, resource=self._resource,
+            iterator_request_kwargs=self._request_kwargs,
+            response_data=self._data, response=self._response)
 
     def _reached_max_limits(self, page_count, item_count, max_pages,
                             max_items):

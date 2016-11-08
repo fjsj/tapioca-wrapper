@@ -21,65 +21,65 @@ class TapiocaAdapter(object):
         else:
             self.serializer = self.get_serializer()
 
-    def _get_to_native_method(self, method_name, value):
+    def _get_to_native_method(self, method_name, value, **kwargs):
         if not self.serializer:
             raise NotImplementedError("This client does not have a serializer")
 
         def to_native_wrapper(**kwargs):
-            return self._value_to_native(method_name, value, **kwargs)
+            return self._value_to_native(method_name=method_name, value=value, **kwargs)
 
         return to_native_wrapper
 
     def _value_to_native(self, method_name, value, **kwargs):
         return self.serializer.deserialize(method_name, value, **kwargs)
 
-    def get_serializer(self):
+    def get_serializer(self, **kwargs):
         if self.serializer_class:
             return self.serializer_class()
 
-    def get_api_root(self, api_params):
+    def get_api_root(self, api_params, **kwargs):
         return self.api_root
 
-    def fill_resource_template_url(self, template, params):
+    def fill_resource_template_url(self, template, params, **kwargs):
         return template.format(**params)
 
     def get_request_kwargs(self, api_params, *args, **kwargs):
         serialized = self.serialize_data(kwargs.get('data'))
 
         kwargs.update({
-            'data': self.format_data_to_request(serialized),
+            'data': self.format_data_to_request(data=serialized),
         })
         return kwargs
 
-    def process_response(self, response):
-
+    def process_response(self, response, **kwargs):
         if 500 <= response.status_code < 600:
             raise ResponseProcessException(ServerError, None)
 
-        data = self.response_to_native(response)
+        data = self.response_to_native(response=response)
 
         if 400 <= response.status_code < 500:
             raise ResponseProcessException(ClientError, data)
 
         return data
 
-    def serialize_data(self, data):
+    def serialize_data(self, data, **kwargs):
         if self.serializer:
             return self.serializer.serialize(data)
 
         return data
 
-    def format_data_to_request(self, data):
+    def format_data_to_request(self, data, **kwargs):
         raise NotImplementedError()
 
-    def response_to_native(self, response):
+    def response_to_native(self, response, **kwargs):
         raise NotImplementedError()
 
-    def get_iterator_list(self, response_data):
+    def get_iterator_list(self, api_params, iterator_request_kwargs,
+                          response_data, response, **kwargs):
         raise NotImplementedError()
 
-    def get_iterator_next_request_kwargs(self, iterator_request_kwargs,
-                                         response_data, response):
+    def get_iterator_next_request_kwargs(self, api_params, iterator_request_kwargs,
+                                         response_data, response, **kwargs):
         raise NotImplementedError()
 
     def is_authentication_expired(self, exception, *args, **kwargs):
@@ -91,10 +91,10 @@ class TapiocaAdapter(object):
 
 class FormAdapterMixin(object):
 
-    def format_data_to_request(self, data):
+    def format_data_to_request(self, data, **kwargs):
         return data
 
-    def response_to_native(self, response):
+    def response_to_native(self, response, **kwargs):
         return {'text': response.text}
 
 
@@ -109,10 +109,10 @@ class JSONAdapterMixin(object):
         arguments['headers']['Content-Type'] = 'application/json'
         return arguments
 
-    def format_data_to_request(self, data):
+    def format_data_to_request(self, data, **kwargs):
         if data:
             return json.dumps(data)
 
-    def response_to_native(self, response):
+    def response_to_native(self, response, **kwargs):
         if response.content.strip():
             return response.json()

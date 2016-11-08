@@ -31,11 +31,11 @@ class TesterClientAdapter(JSONAdapterMixin, TapiocaAdapter):
     api_root = 'https://api.test.com'
     resource_mapping = RESOURCE_MAPPING
 
-    def get_iterator_list(self, response_data):
+    def get_iterator_list(self, response_data, **kwargs):
         return response_data['data']
 
     def get_iterator_next_request_kwargs(self, iterator_request_kwargs,
-                                         response_data, response):
+                                         response_data, response, **kwargs):
         paging = response_data.get('paging')
         if not paging:
             return
